@@ -13,6 +13,63 @@ Over 16 months, **890 Salesforce-related access issues** were filed in `github/b
 
 ---
 
+## Access Request Process Flow
+
+```mermaid
+flowchart TD
+    A["👤 Requester files\nGitHub issue"] --> B{"Bot validates\nsubmission"}
+    B -->|"❌ Invalid"| C["🚫 Error label applied\n(7.6% of issues)"]
+    C --> C1["Requester fixes\n& resubmits"]
+    C1 --> B
+    B -->|"✅ Valid"| D["🤖 Bot opens\nentitlement PR in\ngithub/entitlements"]
+    D --> E{"Manager reviews\n& approves PR"}
+    E -->|"⏳ No response"| F["⚠️ Awaiting Manager\nApproval (10% of issues)\nNo auto-reminder exists"]
+    F -.->|"Manual bump\nby requester"| E
+    E -->|"✅ Approved\n& merged"| G{"Single tool or\nmulti-tool request?"}
+
+    G -->|"Single tool\n(57% of issues)"| H["🔧 Salesforce admin\n(@zahmed727)\nmanually provisions user"]
+    H --> I["✅ Admin closes\nGitHub issue"]
+
+    G -->|"Multi-tool\n(43% of issues)"| J["🔧 Salesforce admin\nprovisions SF access"]
+    J --> K{"Aviso\nrequested?"}
+    K -->|"Yes"| L["⏳ Hard dependency:\nSF must be active first"]
+    L --> M["🔧 Aviso admin\n(@DianeEnriquez)\nprovisions Aviso"]
+    K -->|"No"| N{"Other tools\nrequested?"}
+    M --> N
+
+    N -->|"Outreach"| O["🔧 @ElleKell\nprovisions Outreach"]
+    N -->|"Certinia"| P["🔧 @Jcrosstheuniverse\nprovisions Certinia"]
+    N -->|"LinkedIn Sales Nav"| Q["🔧 Admin provisions\nLinkedIn Sales Nav"]
+    O --> R{"All tools\nprovisioned?"}
+    P --> R
+    Q --> R
+
+    R -->|"✅ Yes"| I
+    R -->|"❌ No — waiting\non other admins"| N
+
+    I --> S["📊 Issue closed\nMedian: 7.0 days\nP90: 40 days"]
+
+    style A fill:#4a90d9,color:#fff
+    style C fill:#e74c3c,color:#fff
+    style F fill:#f39c12,color:#fff
+    style I fill:#27ae60,color:#fff
+    style S fill:#27ae60,color:#fff
+    style L fill:#f39c12,color:#fff
+    style D fill:#8e44ad,color:#fff
+    style J fill:#3498db,color:#fff
+    style H fill:#3498db,color:#fff
+    style M fill:#3498db,color:#fff
+    style O fill:#3498db,color:#fff
+    style P fill:#3498db,color:#fff
+    style Q fill:#3498db,color:#fff
+```
+
+**Legend:** 🔵 Automated step · 🟣 Bot action · 🔵 Manual provisioning · 🟠 Bottleneck/wait state · 🔴 Error · 🟢 Completion
+
+> **Key bottlenecks highlighted:** Manager approval (no auto-reminders), serial multi-tool provisioning (hard Aviso→SF dependency), and single-admin provisioning for each tool.
+
+---
+
 ## Overview
 
 | Category | Total | Open | Closed | Avg Resolution |
@@ -448,6 +505,73 @@ All recommendations are designed to work **within existing headcount** by levera
 | 7 | **SLA framework with automated enforcement** — Define tiered SLAs (3 days single-tool, 5 days multi-tool/updates). Implement via scheduled GitHub Actions: reminders at 75%, breach alerts at 100%, escalation at 150%. | #8 (No SLA) | Establish accountability; target 80% SLA compliance in 3 months |
 | 8 | **Salesforce provisioning automation** — Use Salesforce APIs or Okta SCIM to auto-provision users when entitlement PRs merge. Reduce admin role to verification only. | #2 (Pipeline), #5 (Single points of failure) | Reduce manual provisioning dependency; eliminate OOO-related stalls |
 | 9 | **Resolution dashboard** — Build a GitHub Projects board or lightweight web dashboard showing open issues by age, SLA status, admin workload, monthly trends, and bottleneck analysis. | #8 (No SLA), all | Organizational visibility; data-driven process improvement |
+
+### Proposed Future-State Process Flow
+
+```mermaid
+flowchart TD
+    A["👤 Requester files\nGitHub issue"] --> B{"🤖 Enhanced bot\nvalidates submission\n+ handle verification"}
+    B -->|"❌ Invalid"| C["🚫 Auto-reject with\nspecific fix instructions"]
+    C --> C1["Requester corrects\n& resubmits"]
+    C1 --> B
+    B -->|"✅ Valid"| D{"Single tool or\nmulti-tool?"}
+
+    D -->|"Single tool"| E["🤖 Bot opens entitlement PR\n+ Slack DM to manager\nwith direct approval link"]
+    D -->|"Multi-tool"| F["🤖 Bot creates linked\nsub-issues (1 per tool)\n+ parent tracking issue"]
+    F --> F1["Each sub-issue follows\nindependent lifecycle ⬇"]
+    F1 --> E
+
+    E --> G{"Manager\napproves PR"}
+    G -->|"⏳ 48h no response"| H["⚡ Auto-reminder\nvia Slack + GitHub"]
+    H -->|"⏳ 5 days"| H2["⚡ Escalation to\nmanager's manager"]
+    H --> G
+    H2 --> G
+    G -->|"✅ Approved\n& merged"| I["⚡ Webhook triggers\nSlack alert to admin\n+ SLA clock starts"]
+
+    I --> J{"Salesforce API\navailable?"}
+    J -->|"Yes (Phase 3)"| K["🤖 Auto-provision\nvia SF API / Okta SCIM"]
+    J -->|"No (Phase 1-2)"| L["🔧 Admin provisions\n(notified instantly)"]
+    K --> M["Admin verifies\n(review only)"]
+    L --> M
+
+    M --> N{"Multi-tool?\nSub-issue done"}
+    N -->|"Yes — close\nsub-issue"| O["✅ Sub-issue closed\nBot checks parent"]
+    O --> P{"All sub-issues\nresolved?"}
+    P -->|"Yes"| Q["✅ Parent issue\nauto-closed"]
+    P -->|"No"| R["Next tool sub-issue\nproceeds independently"]
+    N -->|"Single tool"| Q2["✅ Issue closed"]
+
+    Q --> S["📊 SLA tracked\nDashboard updated"]
+    Q2 --> S
+
+    subgraph SLA["⏱️ SLA Enforcement (runs continuously)"]
+        direction LR
+        S1["75% of SLA:\nReminder"] --> S2["100% of SLA:\nBreach alert"] --> S3["150% of SLA:\nMgmt escalation"]
+    end
+
+    subgraph STALE["🧹 Lifecycle Management"]
+        direction LR
+        T1["7 days idle:\nAuto-comment"] --> T2["14 days idle:\nLabel 'stale'"] --> T3["30 days idle:\nAuto-close"]
+    end
+
+    style A fill:#4a90d9,color:#fff
+    style C fill:#e74c3c,color:#fff
+    style K fill:#27ae60,color:#fff
+    style Q fill:#27ae60,color:#fff
+    style Q2 fill:#27ae60,color:#fff
+    style S fill:#2ecc71,color:#fff
+    style F fill:#8e44ad,color:#fff
+    style H fill:#f39c12,color:#fff
+    style H2 fill:#e67e22,color:#fff
+    style I fill:#1abc9c,color:#fff
+    style S1 fill:#f1c40f,color:#333
+    style S2 fill:#e67e22,color:#fff
+    style S3 fill:#e74c3c,color:#fff
+```
+
+> **Key improvements over current state:** Every manual wait point is replaced with an automated trigger. Multi-tool requests are parallelized via sub-issues. SLA enforcement runs continuously. Provisioning can be fully automated in Phase 3.
+
+---
 
 ### Projected Cumulative Impact
 
