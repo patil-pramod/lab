@@ -573,6 +573,105 @@ flowchart TD
 
 ---
 
+### Most Optimized Process Flow (Target State)
+
+This flow reduces the entire pipeline to **two human approvals** — the user's manager and the security/entitlement approvers — with everything else fully automated. All provisioning, tool decomposition, lifecycle management, and closure happen without manual intervention.
+
+```mermaid
+flowchart TD
+    A["👤 Requester submits\naccess request form"] --> B["🤖 Bot validates instantly\n• GitHub handles exist\n• Manager is in org\n• Required fields complete\n• No duplicates"]
+    B -->|"❌ Rejected"| B1["🚫 Auto-response with\nexact fields to fix"]
+    B1 --> A
+    B -->|"✅ Valid"| C["🤖 Bot opens entitlement PR\n+ auto-splits multi-tool\ninto parallel sub-issues"]
+
+    C --> D["📩 Slack DM + email\nsent to manager with\none-click approval link"]
+
+    D --> E["🔐 APPROVAL 1\nUser's Manager\nreviews & approves PR"]
+    E -->|"⏳ 48h"| E1["⚡ Auto-reminder"]
+    E1 -->|"⏳ 5 days"| E2["⚡ Escalate to\nskip-level manager"]
+    E1 --> E
+    E2 --> E
+    E -->|"✅ Approved"| F["📩 PR auto-assigned to\nSecurity Entitlement team"]
+
+    F --> G["🔐 APPROVAL 2\nSecurity / Entitlement\nApprovers review PR"]
+    G -->|"⏳ 24h"| G1["⚡ Auto-reminder\nto security team"]
+    G1 --> G
+    G -->|"✅ Approved\n& merged"| H["⚡ Merge event triggers\nautomated provisioning"]
+
+    H --> I["🤖 Okta SCIM / SF API\nauto-provisions user\n• Profile assigned\n• Permission sets applied\n• Role hierarchy set"]
+
+    I --> J{"Multi-tool\nrequest?"}
+    J -->|"No"| K["✅ Issue auto-closed\nRequester notified"]
+    J -->|"Yes"| L["🤖 Parallel provisioning\ntriggered for each tool"]
+
+    L --> L1["🤖 Aviso: auto-provision\n(waits for SF sync)"]
+    L --> L2["🤖 Outreach: auto-provision\nvia API"]
+    L --> L3["🤖 Certinia: auto-provision\nvia API"]
+    L --> L4["🤖 LinkedIn Sales Nav:\nauto-provision via SCIM"]
+
+    L1 --> M{"All tools\nprovisioned?"}
+    L2 --> M
+    L3 --> M
+    L4 --> M
+
+    M -->|"✅ All done"| N["✅ Parent issue auto-closed\nAll sub-issues closed\nRequester notified"]
+
+    N --> O["📊 Metrics logged\n• Resolution time\n• SLA compliance\n• Per-tool latency"]
+    K --> O
+
+    subgraph APPROVALS["🔐 Only Two Human Approvals"]
+        direction LR
+        AP1["1️⃣ User's Manager"] ~~~ AP2["2️⃣ Security / Entitlement"]
+    end
+
+    subgraph AUTO["🤖 Fully Automated (No Human Action)"]
+        direction LR
+        AU1["Validation"] ~~~ AU2["PR Creation"] ~~~ AU3["Notifications"] ~~~ AU4["Provisioning"] ~~~ AU5["Closure"]
+    end
+
+    subgraph SLA["⏱️ SLA Enforcement"]
+        direction LR
+        SL1["Manager: 2 biz days"] ~~~ SL2["Security: 1 biz day"] ~~~ SL3["Provisioning: instant"]
+    end
+
+    style A fill:#4a90d9,color:#fff
+    style B1 fill:#e74c3c,color:#fff
+    style E fill:#e67e22,color:#fff
+    style G fill:#e67e22,color:#fff
+    style I fill:#27ae60,color:#fff
+    style K fill:#27ae60,color:#fff
+    style N fill:#27ae60,color:#fff
+    style O fill:#2ecc71,color:#fff
+    style L1 fill:#3498db,color:#fff
+    style L2 fill:#3498db,color:#fff
+    style L3 fill:#3498db,color:#fff
+    style L4 fill:#3498db,color:#fff
+    style AP1 fill:#e67e22,color:#fff
+    style AP2 fill:#e67e22,color:#fff
+    style AU1 fill:#27ae60,color:#fff
+    style AU2 fill:#27ae60,color:#fff
+    style AU3 fill:#27ae60,color:#fff
+    style AU4 fill:#27ae60,color:#fff
+    style AU5 fill:#27ae60,color:#fff
+```
+
+> **What changed vs. current state:**
+>
+> | Aspect | Current State | Most Optimized |
+> |---|---|---|
+> | **Human approvals** | Manager + ad-hoc admin decisions | Exactly 2: Manager → Security/Entitlement |
+> | **Provisioning** | Manual by 4 individual admins | Fully automated via APIs / SCIM |
+> | **Multi-tool handling** | Serial (one issue, tools done sequentially) | Parallel sub-issues, each auto-provisioned |
+> | **Notifications** | None (pull-based, admins check manually) | Push-based: Slack DM + email at every step |
+> | **Escalation** | Ad-hoc requester "bumps" | Automated: 48h → reminder, 5d → skip-level |
+> | **Issue closure** | Admin manually returns to close | Auto-closed on provisioning completion |
+> | **Expected median resolution** | 7.0 days | **<1 business day** (approval-bound only) |
+> | **Expected P90 resolution** | 40 days | **2–3 business days** |
+>
+> The only variable in this flow is **how quickly the two approvers act**. Everything else is instant and automated. With the nudging system, most approvals complete within hours, making **same-day resolution** the norm rather than the exception.
+
+---
+
 ### Projected Cumulative Impact
 
 | Metric | Current | After Phase 1 | After Phase 2 | After Phase 3 |
